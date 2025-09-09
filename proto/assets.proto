@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package assets;
+
+option go_package = "github.com/polyakovWeb/crosspromo_backend_go/cmd/server/assets";
+
+service AssetsService {
+  rpc GetAssets(GetAssetsRequest) returns (GetAssetsResponse) {}
+}
+
+message GetAssetsRequest {
+  map<string, string> filters = 1;
+}
+
+message CrosspromoFile {
+  string AdType = 1;
+  string AdFormat = 2;
+  int32 FileSize = 3;
+  string Url = 4;
+}
+
+message AdTypeData {
+  string title = 1;
+  repeated CrosspromoFile data = 2;
+}
+
+message Platform {
+  string name = 1;
+  map<string, AdTypeData> AdType = 2;
+}
+
+message Localization {
+  string localizationCode = 1;
+  repeated Platform platforms = 2;
+}
+
+// Изменяем ответ на просто массив Localization
+message GetAssetsResponse {
+  repeated Localization localizations = 1;
+}
