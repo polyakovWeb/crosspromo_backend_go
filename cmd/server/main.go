@@ -263,6 +263,28 @@ func (s *server) GetAssets(ctx context.Context, req *pb.GetAssetsRequest) (*pb.G
 	return transformToProto(results), nil
 }
 
+func enableCORS(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Разрешаем запросы с любого origin (можно указать конкретные домены)
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+
+		// Разрешаем методы
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
+
+		// Разрешаем заголовки
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		// Обрабатываем preflight OPTIONS запросы
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		// Передаем управление следующему обработчику
+		next(w, r)
+	}
+}
+
 // HTTP handler для обработки query параметров
 func httpHandler(srv *server) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -298,7 +320,10 @@ func httpHandler(srv *server) http.HandlerFunc {
 		}
 
 		// Преобразуем protobuf ответ в JSON
-		jsonBytes, err := protojson.Marshal(response)
+		jsonBytes, err := protojson.MarshalOptions{
+			UseProtoNames:   true, // Использует оригинальные имена полей из .proto файла
+			EmitUnpopulated: true, // Включает поля с нулевыми значениями
+		}.Marshal(response)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -370,7 +395,7 @@ func main() {
 
 	// Создаем HTTP handler с поддержкой query параметров
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/assets/getAssets", httpHandler(srv))
+	mux.HandleFunc("/api/assets/getAssets", enableCORS(httpHandler(srv)))
 
 	log.Println("Starting HTTP server on :8080")
 	err = http.ListenAndServe(":8080", mux)
